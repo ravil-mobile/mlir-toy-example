@@ -174,6 +174,7 @@ def ReshapeOp : Toy_Op<"reshape", [Pure]> {
   let assemblyFormat = [{
     `(` $input `:` type($input) `)` attr-dict `to` type(results)
   }];
+  let hasCanonicalizer = 1;
 }
 
 def ReturnOp : Toy_Op<"return", [Pure, HasParent<"FuncOp">, Terminator]> {
@@ -217,6 +218,7 @@ def TransposeOp : Toy_Op<"transpose", [Pure]> {
   ];
 
   let hasVerifier = 1;
+  let hasCanonicalizer = 1;
 }
 
 #endif // TOY_OPS

@@ -20,7 +20,11 @@ mlir_tablegen(Dialect.h.inc -gen-dialect-decls)
 mlir_tablegen(Dialect.cpp.inc -gen-dialect-defs)
 add_public_tablegen_target(ToyTableGen)
 
-set(SRC toyc.cpp parser/AST.cpp mlir/Dialect.cpp mlir/MLIRGen.cpp)
+set(SRC toyc.cpp
+        parser/AST.cpp
+        mlir/Dialect.cpp
+        mlir/MLIRGen.cpp
+        mlir/ToyCombine.cpp)
 add_executable(${CMAKE_PROJECT_NAME} ${SRC})
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE

@@ -16,6 +16,8 @@
 
 #include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/Pass/PassManager.h"
+#include "mlir/Transforms/Passes.h"
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/CommandLine.h"
@@ -39,6 +41,8 @@ static cl::opt<enum Action>
     emitAction("emit", cl::desc("Select the kind of output desired"),
                cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
                cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")));
+
+static cl::opt<bool> enableOpt("opt", cl::desc("Enable Optimization"));
 
 /// Returns a Toy AST resulting from parsing the file or a nullptr on error.
 std::unique_ptr<toy::ModuleAST> parseInputFile(llvm::StringRef filename) {
@@ -72,6 +76,21 @@ int dumpMLIR() {
   ctx->getOrLoadDialect<toy::ToyDialect>();
   mlir::OwningOpRef<mlir::ModuleOp>  module = mlirGen(*ctx, *moduleAST);
   
+  if (enableOpt) {
+    mlir::PassManager pm(module.get()->getName());
+    // Apply any generic pass manager command line options and run the pipeline.
+    if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
+      llvm::errs() << "failed to apply command options of the mlir pass manager\n";
+      return 4;
+    }
+
+    pm.addNestedPass<toy::FuncOp>(mlir::createCanonicalizerPass());
+    if (mlir::failed(pm.run(*module))) {
+      llvm::errs() << "failed to perform mlir optimization\n";
+      return 4;
+    }
+  }
+
   module->dump();
   return 0;
 }
@@ -79,6 +98,7 @@ int dumpMLIR() {
 int main(int argc, char **argv) {
   mlir::registerAsmPrinterCLOptions();
   mlir::registerMLIRContextCLOptions();
+  mlir::registerPassManagerCLOptions();
   cl::ParseCommandLineOptions(argc, argv, "toy compiler\n");
 
   switch (emitAction) {
