@@ -13,9 +13,10 @@
 #include "toy/Dialect.h"
 #include "toy/MLIRGen.h"
 #include "toy/Parser.h"
+#include "toy/Passes.h"
 
-#include "mlir/IR/MLIRContext.h"
 #include "mlir/IR/BuiltinOps.h"
+#include "mlir/IR/MLIRContext.h"
 #include "mlir/Pass/PassManager.h"
 #include "mlir/Transforms/Passes.h"
 
@@ -37,10 +38,10 @@ namespace {
 enum Action { None, DumpAST, DumpMLIR };
 } // namespace
 
-static cl::opt<enum Action>
-    emitAction("emit", cl::desc("Select the kind of output desired"),
-               cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
-               cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")));
+static cl::opt<enum Action> emitAction(
+    "emit", cl::desc("Select the kind of output desired"),
+    cl::values(clEnumValN(DumpAST, "ast", "output the AST dump")),
+    cl::values(clEnumValN(DumpMLIR, "mlir", "output the MLIR dump")));
 
 static cl::opt<bool> enableOpt("opt", cl::desc("Enable Optimization"));
 
@@ -74,17 +75,24 @@ int dumpMLIR() {
 
   auto ctx = std::make_unique<mlir::MLIRContext>();
   ctx->getOrLoadDialect<toy::ToyDialect>();
-  mlir::OwningOpRef<mlir::ModuleOp>  module = mlirGen(*ctx, *moduleAST);
-  
+  mlir::OwningOpRef<mlir::ModuleOp> module = mlirGen(*ctx, *moduleAST);
+
   if (enableOpt) {
     mlir::PassManager pm(module.get()->getName());
     // Apply any generic pass manager command line options and run the pipeline.
     if (mlir::failed(mlir::applyPassManagerCLOptions(pm))) {
-      llvm::errs() << "failed to apply command options of the mlir pass manager\n";
+      llvm::errs()
+          << "failed to apply command options of the mlir pass manager\n";
       return 4;
     }
 
-    pm.addNestedPass<toy::FuncOp>(mlir::createCanonicalizerPass());
+    pm.addPass(mlir::createInlinerPass());
+
+    mlir::OpPassManager &optPM = pm.nest<toy::FuncOp>();
+    optPM.addPass(toy::createShapeInferencePass());
+    optPM.addNestedPass<toy::FuncOp>(mlir::createCanonicalizerPass());
+    optPM.addPass(mlir::createCSEPass());
+
     if (mlir::failed(pm.run(*module))) {
       llvm::errs() << "failed to perform mlir optimization\n";
       return 4;

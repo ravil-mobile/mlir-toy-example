@@ -4,7 +4,10 @@
 include "mlir/IR/FunctionInterfaces.td"
 include "mlir/IR/SymbolInterfaces.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
-//include "mlir/Interfaces/SideEffectInterfaces.td"
+include "mlir/Interfaces/CallInterfaces.td"
+include "mlir/Interfaces/CastInterfaces.td"
+include "mlir/ShapeInferenceInterface.td"
+
 
 def Toy_Dialect : Dialect {
   let name = "toy";
@@ -48,7 +51,7 @@ def ConstantOp : Toy_Op<"constant", [Pure]> {
   let hasVerifier = 1;
 }
 
-def AddOp : Toy_Op<"add", [Pure]> {
+def AddOp : Toy_Op<"add", [Pure, DeclareOpInterfaceMethods<ShapeInterfaceOpInterface>]> {
   let summary = "element-wise addition operation";
   let description = [{
     The "add" operation performs element-wise addition between two tensors.
@@ -62,7 +65,7 @@ def AddOp : Toy_Op<"add", [Pure]> {
   ];
 }
 
-def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
+def FuncOp : Toy_Op<"func", [DeclareOpInterfaceMethods<CallableOpInterface>, FunctionOpInterface, IsolatedFromAbove]> {
   let summary = "user defined function operation";
   let description = [{
     The "toy.func" operation represents a user defined function. These are
@@ -97,15 +100,12 @@ def FuncOp : Toy_Op<"func", [FunctionOpInterface, IsolatedFromAbove]> {
 
     /// Returns the result types of this function.
     ArrayRef<Type> getResultTypes() { return getFunctionType().getResults(); }
-
-    /// Returns the region on the current operation that is callable.
-    ::mlir::Region *getCallableRegion() { return &getBody(); }
   }];
   let hasCustomAssemblyFormat = 1;
   let skipDefaultBuilders = 1;
 }
 
-def GenericCallOp : Toy_Op<"generic_call"> {
+def GenericCallOp : Toy_Op<"generic_call", [DeclareOpInterfaceMethods<CallOpInterface>]> {
   let summary = "generic call operation";
   let description = [{
     Generic calls represent calls to a user defined function that needs to
@@ -132,7 +132,7 @@ def GenericCallOp : Toy_Op<"generic_call"> {
   ];
 }
 
-def MulOp : Toy_Op<"mul", [Pure]> {
+def MulOp : Toy_Op<"mul", [Pure, DeclareOpInterfaceMethods<ShapeInterfaceOpInterface>]> {
   let summary = "element-wise multiplication operation";
   let description = [{
     The "mul" operation performs element-wise multiplication between two
@@ -204,7 +204,7 @@ def ReturnOp : Toy_Op<"return", [Pure, HasParent<"FuncOp">, Terminator]> {
   let hasVerifier = 1;
 }
 
-def TransposeOp : Toy_Op<"transpose", [Pure]> {
+def TransposeOp : Toy_Op<"transpose", [Pure, DeclareOpInterfaceMethods<ShapeInterfaceOpInterface>]> {
   let summary = "transpose operation";
   let arguments = (ins F64Tensor:$input);
   let results = (outs F64Tensor);
@@ -219,6 +219,26 @@ def TransposeOp : Toy_Op<"transpose", [Pure]> {
 
   let hasVerifier = 1;
   let hasCanonicalizer = 1;
+}
+
+def CastOp : Toy_Op<"cast", [
+    DeclareOpInterfaceMethods<CastOpInterface>,
+    DeclareOpInterfaceMethods<ShapeInterfaceOpInterface>,
+    Pure,
+    SameOperandsAndResultShape
+    ]> {
+  let summary = "shape cast operation";
+  let description = [{
+    The "cast" operation converts a tensor from one type to an equivalent type
+    without changing any data elements. The source and destination types
+    must both be tensor types with the same element type. If both are ranked,
+    then shape is required to match. The operation is invalid if converting
+    to a mismatching constant dimension.
+  }];
+
+  let arguments = (ins F64Tensor:$input);
+  let results = (outs F64Tensor:$output);
+  let assemblyFormat = "$input attr-dict `:` type($input) `to` type($output)";
 }
 
 #endif // TOY_OPS

@@ -24,11 +24,18 @@ mlir_tablegen(Dialect.h.inc -gen-dialect-decls)
 mlir_tablegen(Dialect.cpp.inc -gen-dialect-defs)
 add_public_tablegen_target(ToyTableGen)
 
+set(LLVM_TARGET_DEFINITIONS mlir/ShapeInferenceInterface.td)
+mlir_tablegen(ShapeInferenceOpInterfaces.h.inc -gen-op-interface-decls)
+mlir_tablegen(ShapeInferenceOpInterfaces.cpp.inc -gen-op-interface-defs)
+add_public_tablegen_target(InterfaceIncGen)
+
 set(SRC toyc.cpp
         parser/AST.cpp
         mlir/Dialect.cpp
         mlir/MLIRGen.cpp
-        mlir/ToyCombine.cpp)
+        mlir/ToyCombine.cpp
+        mlir/ShapeInferencePass.cpp
+        )
 add_executable(${CMAKE_PROJECT_NAME} ${SRC})
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
@@ -41,6 +48,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   MLIRAnalysis
+  MLIRCastInterfaces
+  MLIRCallInterfaces
 #  MLIRFunctionInterfaces
   MLIRIR
   MLIRParser
@@ -52,4 +61,4 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE "-fno-rtti")
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE include ${CMAKE_BINARY_DIR})
 
-add_dependencies(${CMAKE_PROJECT_NAME} ToyTableGen)
+add_dependencies(${CMAKE_PROJECT_NAME} ToyTableGen InterfaceIncGen)

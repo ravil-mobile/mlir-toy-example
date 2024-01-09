@@ -26,10 +26,10 @@
 
 namespace {
 class MLIRGenImpl {
-  public:
-  MLIRGenImpl(mlir::MLIRContext& context) : builder(&context) {}
+public:
+  MLIRGenImpl(mlir::MLIRContext &context) : builder(&context) {}
 
-  mlir::ModuleOp mlirGen(toy::ModuleAST& moduleAST) {
+  mlir::ModuleOp mlirGen(toy::ModuleAST &moduleAST) {
     theModule = mlir::ModuleOp::create(builder.getUnknownLoc());
     for (auto func = moduleAST.begin(); func != moduleAST.end(); ++func) {
       mlirGen(*func);
@@ -46,7 +46,7 @@ class MLIRGenImpl {
     return theModule;
   }
 
-  private:
+private:
   mlir::OpBuilder builder;
   mlir::ModuleOp theModule;
   llvm::ScopedHashTable<StringRef, mlir::Value> symbolTable;
@@ -65,15 +65,17 @@ class MLIRGenImpl {
     return mlir::success();
   }
 
-  toy::FuncOp mlirGen(toy::PrototypeAST& proto) {
+  toy::FuncOp mlirGen(toy::PrototypeAST &proto) {
     auto location = loc(proto.loc());
-    llvm::SmallVector<mlir::Type, 4> args{proto.getArgs().size(), getType(toy::VarType{})};
+    llvm::SmallVector<mlir::Type, 4> args{proto.getArgs().size(),
+                                          getType(toy::VarType{})};
     auto functionType = builder.getFunctionType(args, std::nullopt);
     return builder.create<toy::FuncOp>(location, proto.getName(), functionType);
   }
 
-  toy::FuncOp mlirGen(toy::FunctionAST& func) {
-    llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> varScope(symbolTable);
+  toy::FuncOp mlirGen(toy::FunctionAST &func) {
+    llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> varScope(
+        symbolTable);
 
     builder.setInsertionPointToEnd(theModule.getBody());
     toy::FuncOp function = mlirGen(*(func.getProto()));
@@ -81,7 +83,7 @@ class MLIRGenImpl {
       return nullptr;
     }
 
-    mlir::Block& entryBlock = function.front();
+    mlir::Block &entryBlock = function.front();
     auto protoArgs = func.getProto()->getArgs();
 
     // Declare all the function arguments in the symbol table.
@@ -115,9 +117,12 @@ class MLIRGenImpl {
           function.getFunctionType().getInputs(), getType(toy::VarType{})));
     }
 
+    if (func.getProto()->getName() != "main") {
+      function.setPrivate();
+    }
+
     return function;
   }
-
 
   mlir::Value mlirGen(toy::BinaryExprAST &binop) {
     mlir::Value lhs = mlirGen(*binop.getLHS());
@@ -161,8 +166,8 @@ class MLIRGenImpl {
     }
 
     // Otherwise, this return operation has zero operands.
-    builder.create<toy::ReturnOp>(location,
-                             expr ? ArrayRef(expr) : ArrayRef<mlir::Value>());
+    builder.create<toy::ReturnOp>(location, expr ? ArrayRef(expr)
+                                                 : ArrayRef<mlir::Value>());
     return mlir::success();
   }
 
@@ -252,6 +257,24 @@ class MLIRGenImpl {
       return builder.create<toy::TransposeOp>(location, operands[0]);
     }
 
+    if (callee == "mul") {
+      if (call.getArgs().size() != 2) {
+        emitError(location, "MLIR codegen encountered an error: toy.mul "
+                            "accepts 2 arguments");
+        return nullptr;
+      }
+      return builder.create<toy::MulOp>(location, operands[0], operands[1]);
+    }
+
+    if (callee == "add") {
+      if (call.getArgs().size() != 2) {
+        emitError(location, "MLIR codegen encountered an error: toy.mul "
+                            "accepts 2 arguments");
+        return nullptr;
+      }
+      return builder.create<toy::AddOp>(location, operands[0], operands[1]);
+    }
+
     // Otherwise this is a call to a user-defined function. Calls to
     // user-defined functions are mapped to a custom call that takes the callee
     // name as an attribute.
@@ -316,7 +339,7 @@ class MLIRGenImpl {
     // optimized out later as needed.
     if (!vardecl.getType().shape.empty()) {
       value = builder.create<toy::ReshapeOp>(loc(vardecl.loc()),
-                                        getType(vardecl.getType()), value);
+                                             getType(vardecl.getType()), value);
     }
 
     // Register the value in the symbol table.
@@ -368,7 +391,6 @@ class MLIRGenImpl {
 };
 
 } // namespace
-
 
 namespace toy {
 mlir::OwningOpRef<mlir::ModuleOp> mlirGen(mlir::MLIRContext &context,
