@@ -1,7 +1,7 @@
 def multiply_transpose(arg0, arg1) {
   var x = transpose(arg0);
   var y = transpose(arg1);
-  var res = add(x, y);
+  var res = mul(x, y);
   return res;
 }
 
@@ -9,7 +9,7 @@ def main() {
   # Define a variable `a` with shape <2, 3>, initialized with the literal value.
   # The shape is inferred from the supplied literal.
   var a = [[1, 2, 3], [4, 5, 6]];
-  var b = [[1, 2], [3, 4], [5, 6]];
+  var b = [[9, 8, 7], [6, 5, 4]];
 
   var res = multiply_transpose(a, b);
   print(res);

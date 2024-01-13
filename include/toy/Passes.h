@@ -9,6 +9,7 @@ class Pass;
 
 namespace toy {
 std::unique_ptr<mlir::Pass> createShapeInferencePass();
+std::unique_ptr<mlir::Pass> createLowerToAffinePass();
 } // namespace toy
 
 #endif // TOY_PASSES_H

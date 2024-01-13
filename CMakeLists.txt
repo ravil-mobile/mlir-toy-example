@@ -35,6 +35,7 @@ set(SRC toyc.cpp
         mlir/MLIRGen.cpp
         mlir/ToyCombine.cpp
         mlir/ShapeInferencePass.cpp
+        mlir/LowerToAffineLoops.cpp
         )
 add_executable(${CMAKE_PROJECT_NAME} ${SRC})
 
@@ -46,15 +47,21 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   LLVMCodeGen
 )
 
+get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
+get_property(extension_libs GLOBAL PROPERTY MLIR_EXTENSION_LIBS)
+
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+  ${dialect_libs}
+  ${extension_libs}
   MLIRAnalysis
   MLIRCastInterfaces
   MLIRCallInterfaces
-#  MLIRFunctionInterfaces
+  #MLIRFunctionInterfaces
   MLIRIR
   MLIRParser
   MLIRPass
   MLIRSideEffectInterfaces
+  MLIRSupport
   MLIRTransforms
 )
 
