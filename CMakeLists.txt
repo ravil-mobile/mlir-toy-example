@@ -36,6 +36,7 @@ set(SRC toyc.cpp
         mlir/ToyCombine.cpp
         mlir/ShapeInferencePass.cpp
         mlir/LowerToAffineLoops.cpp
+        mlir/LowerToLLVM.cpp
         )
 add_executable(${CMAKE_PROJECT_NAME} ${SRC})
 
@@ -45,6 +46,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   LLVMSupport
   LLVMOption
   LLVMCodeGen
+  LLVMOrcJIT
 )
 
 get_property(dialect_libs GLOBAL PROPERTY MLIR_DIALECT_LIBS)
@@ -63,6 +65,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
   MLIRSideEffectInterfaces
   MLIRSupport
   MLIRTransforms
+  MLIRTargetLLVMIRExport
+  MLIRLLVMToLLVMIRTranslation
+  MLIRLLVMCommonConversion
+  MLIRLLVMDialect
+  MLIRLLVMToLLVMIRTranslation
+  MLIRExecutionEngine
 )
 
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE "-fno-rtti")
